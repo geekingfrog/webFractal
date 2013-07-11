@@ -11,18 +11,10 @@ ymax = ymin + (xmax-xmin)/ratio
 canvas = document.getElementById("fractal")
 canvas.width = width
 canvas.height = height
-ctx = canvas.getContext("2d")
+window.ctx = canvas.getContext("2d")
 
 ctx.fillStyle = "#ef0000"
 
-# x scale
-# take a number in [xmin; xmax] and returns the corresponding pixel in the canvas
-window.fx = (x) ->
-  canvas.width/2 + x*canvas.width/4
-
-# y scale
-window.fy = (y) ->
-  canvas.height/2 + y*canvas.height/4
 
 #fx^-1(x) and fy^-1(y) convert pixel to logical coordinates
 window.toX = (px) ->
@@ -85,7 +77,7 @@ progressiveDraw = (n = 10) ->
   else
     nextDrawing = null
 
-progressiveDraw()
+# progressiveDraw()
 
 
 # return the absolute position of the element relative to the window
@@ -149,3 +141,107 @@ zoomOut = (cx, cy) ->
 
 
 console.log "done after #{Date.now() - start} ms (at #{Date.now()})"
+
+mandlebrot = (cx, cy, limit) ->
+  n = 1
+  zx = cx
+  zy = cy
+  while n<limit
+    if zx*zx + zy*zy > 4
+      return n
+    tmp = zx*zx - zy*zy
+    zy = 2*zx*zy + cy
+    zx = tmp + cx
+    n++
+  return false
+
+# ten green from darker to lighter
+greenPalette = do (n=10) ->
+  poly = (x) -> Math.floor(x*x*x - 85*x*x + 340*x)
+  palette = for i in [0...n]
+    [0, poly(i/n), 0]
+  return palette
+
+for color, i in greenPalette
+  n = greenPalette.length
+  ctx.fillStyle = "rgb(#{color[0]}, #{color[1]}, #{color[2]})"
+  ctx.fillRect(i*width/n, 0, width/n, height)
+
+# take an object as argument which contains the instruction to draw a fractal
+# and returns a UintClampedArray to draw on a canvas
+# data:
+#   xmin: logical xmin and xmax
+#   xmax
+#   ymin: logical ymin and ymax
+#   ymax
+#   pxWidth: number of pixel (width)
+#   pxHeight: number of pixel (height)
+#   palette: the color palette to use, palette[i] is an array of 3 int for rgb()
+computeFractal = (data) ->
+  {xmax, xmin, ymax, ymin, pxWidth, pxHeight, palette, limit} = data
+  # res = new Uint8ClampedArray(pxWidth*pxHeight*4)
+  res = ctx.createImageData(pxWidth, pxHeight)
+
+  # transform a pixel coordinate into a logical coordinate
+  # (0, 0) -> (xmin, ymin)
+  toX = (px) ->
+    px*(xmax-xmin)/pxWidth + xmin
+
+  toY = (py) ->
+    (py*(ymax-ymin)/pxHeight + ymin)
+
+  for py in [0...pxHeight]
+    cy = toY(py)
+    for px in [0...pxWidth]
+      cx = toX(px)
+      res.data[0+((py*pxWidth + px)<<2)] = Math.floor(Math.random()*255)
+      res.data[1+((py*pxWidth + px)<<2)] = Math.floor(Math.random()*255)
+      res.data[2+((py*pxWidth + px)<<2)] = Math.floor(Math.random()*255)
+      res.data[3+((py*pxWidth + px)<<2)] = 255
+
+      divIdx = mandlebrot(cx, cy, limit)
+      if divIdx
+        color = palette[Math.floor(divIdx*(palette.length-1)/limit)]
+        res.data[0+((py*pxWidth + px)<<2)] = color[0]
+        res.data[1+((py*pxWidth + px)<<2)] = color[1]
+        res.data[2+((py*pxWidth + px)<<2)] = color[2]
+        res.data[3+((py*pxWidth + px)<<2)] = 255
+      else
+        res.data[0+((py*pxWidth + px)<<2)] = 0
+        res.data[1+((py*pxWidth + px)<<2)] = 0
+        res.data[2+((py*pxWidth + px)<<2)] = 0
+        res.data[3+((py*pxWidth + px)<<2)] = 255
+
+  return res
+
+window.test = ->
+  # test to build the fractal in multiple times
+
+  width0 = 600
+  height0 = 400
+  xmax0 =  1
+  xmin0 = -2
+  ymin0 = -1
+  ymax0 = ymin0 + (xmax0-xmin0)/(width0/height0)
+  xSlices = 5
+
+  xSlices = 20
+  ySlices = 10
+  for i in [0...xSlices]
+    for j in [0...ySlices]
+      data = {
+        pxWidth: width0/xSlices
+        pxHeight: height0/ySlices
+        xmin: xmin0 + i/xSlices*(xmax0-xmin0)
+        xmax: xmin0 + (i+1)/xSlices*(xmax0-xmin0)
+        ymin: ymin0 + j/ySlices*(ymax0-ymin0)
+        ymax: ymin0 + (j+1)/ySlices*(ymax0-ymin0)
+        palette: greenPalette
+        limit: 500
+      }
+      ctx.putImageData(computeFractal(data), i/xSlices*width0, j/ySlices*height0)
+
+start = Date.now()
+test()
+console.log "done in #{Date.now()-start} ms"
+
