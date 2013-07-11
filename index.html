@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <!-- set viewport to make html render in all handset -->
+    <meta name="viewport" content="initial-scale=1.0, user-scalable=no" />
+    <meta http-equiv="content-type" content="text/html; charset=utf-8">
+
+    <title>test webworkers</title>
+  </head>
+  <body>
+
+    <canvas id="fractal">
+    
+    </canvas>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+      socket = io.connect('/livereload');
+      socket.on('reload', function() { location.reload() });
+      socket.on('reconnect_failed', function(){console.warn('reconnection socket.io failed')});
+      socket.on('error', function(data){console.error('socket.io error: ', data)});
+    </script>
+
+    <script src="main.js" type="text/javascript" charset="utf-8"></script>
+
+  </body>
+</html>
