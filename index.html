@@ -12,14 +12,13 @@
         cursor: default;
       }
 
-      #container {
-        position: relative;
+      body {
+        margin: 0;
         padding: 0;
-        margin: 10px 0;
-        display: inline-block;
+        overflow: hidden;
       }
 
-      #fractal {
+      canvas {
         padding: 0;
         margin: 0;
       }
@@ -29,9 +28,7 @@
   <body>
 
 
-    <div id="container">
-      <canvas id="fractal"> </canvas>
-    </div>
+    <canvas id="fractal"> </canvas>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>

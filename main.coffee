@@ -80,68 +80,6 @@ progressiveDraw = (n = 10) ->
 # progressiveDraw()
 
 
-# return the absolute position of the element relative to the window
-# probably break if scrolling
-findPos = (el) ->
-  offsetTop = 0
-  offsetLeft = 0
-  node = el
-  while node.offsetParent
-    offsetTop += node.offsetTop
-    offsetLeft += node.offsetLeft
-    node = node.offsetParent
-  return {top: offsetTop, left: offsetLeft}
-
-selection = document.querySelector(".selection")
-offset = findPos(document.querySelector("#container"))
-console.log "offset: ", offset
-startX = 0
-startY = 0
-
-canvas.addEventListener("mousewheel", (ev) ->
-  ev.preventDefault()
-  cx = toX(ev.x-offset.left)
-  cy = toY(ev.y-offset.top)
-  if ev.wheelDeltaY > 0
-    zoomIn(cx, cy)
-  else
-    zoomOut(cx, cy)
-)
-
-zoomIn = (cx ,cy) ->
-  newW = (xmax-xmin) / 2
-  xmin = cx - newW/2
-  xmax = cx + newW/2
-
-  newH = newW/ratio
-  ymin = cy - newH/2
-  ymax = cy + newH/2
-  console.log "center of zoom: (#{cx}, #{cy})"
-  console.log "new ranges: [#{xmin}, #{xmax}] [#{ymin}, #{ymax}]"
-  if nextDrawing
-    clearTimeout(nextDrawing)
-  progressiveDraw()
-
-
-zoomOut = (cx, cy) ->
-  newW = (xmax-xmin) * 2
-  if newW >= 3 # recenter to the initial state
-    cx = -.5
-    cy = 0
-    newW = 3
-  xmin = cx - newW/2
-  xmax = cx + newW/2
-
-  newH = newW/ratio
-  ymin = cy - newH/2
-  ymax = cy + newH/2
-  if nextDrawing
-    clearTimeout(nextDrawing)
-  progressiveDraw()
-
-
-console.log "done after #{Date.now() - start} ms (at #{Date.now()})"
-
 mandlebrot = (cx, cy, limit) ->
   n = 1
   zx = cx
@@ -217,21 +155,23 @@ computeFractal = (data) ->
 window.test = ->
   # test to build the fractal in multiple times
 
-  width0 = 600
-  height0 = 400
+  canvas = document.querySelector("canvas")
+  canvas.width = window.innerWidth
+  canvas.height = window.innerHeight
+  width0 = canvas.width
+  height0 = canvas.height
   xmax0 =  1
-  xmin0 = -2
+  xmin0 = -3
   ymin0 = -1
   ymax0 = ymin0 + (xmax0-xmin0)/(width0/height0)
-  xSlices = 5
 
-  xSlices = 20
-  ySlices = 10
+  xSlices = 8
+  ySlices = 8
   for i in [0...xSlices]
     for j in [0...ySlices]
       data = {
-        pxWidth: width0/xSlices
-        pxHeight: height0/ySlices
+        pxWidth: Math.round(width0/xSlices)
+        pxHeight: Math.round(height0/ySlices)
         xmin: xmin0 + i/xSlices*(xmax0-xmin0)
         xmax: xmin0 + (i+1)/xSlices*(xmax0-xmin0)
         ymin: ymin0 + j/ySlices*(ymax0-ymin0)
@@ -239,7 +179,11 @@ window.test = ->
         palette: greenPalette
         limit: 500
       }
-      ctx.putImageData(computeFractal(data), i/xSlices*width0, j/ySlices*height0)
+      ctx.putImageData(
+        computeFractal(data)
+        Math.round(i/xSlices*width0)
+        Math.round(j/ySlices*height0)
+      )
 
 start = Date.now()
 test()
