@@ -7,13 +7,10 @@ xmax = 1
 ymin = -1
 ymax = ymin + (xmax-xmin)/ratio
 # compute only the first term of the serie to check if it'll diverge
-limit = 40
-
 
 canvas = document.getElementById("fractal")
 canvas.width = width
 canvas.height = height
-canvas.style.border = "1px solid black"
 ctx = canvas.getContext("2d")
 
 ctx.fillStyle = "#ef0000"
@@ -32,7 +29,7 @@ window.toX = (px) ->
   px*(xmax-xmin)/width + xmin
 
 window.toY = (py) ->
-  py*(ymax-ymin)/height + ymin
+  (py*(ymax-ymin)/height + ymin)
 
 colorScale = ("rgb(#{step},#{step},#{step})" for step in [0...250] by 12)
 
@@ -42,7 +39,7 @@ colorScale = ("rgb(#{step},#{step},#{step})" for step in [0...250] by 12)
 # To speed up things, all computation is done with squared value (no square root)
 # z0 = 0
 # z_n+1 = z_n^2 + c
-isDiverging = (cx, cy) ->
+isDiverging = (cx, cy, limit) ->
   n = 1
   zx = cx
   zy = cy
@@ -60,18 +57,95 @@ isDiverging = (cx, cy) ->
 pixelSize = 1
 start = Date.now()
 console.log "starting at #{start}"
-for px in [0..width] by pixelSize
-  dx = Math.abs(width/2 - px)
-  x = toX(px)
-  for py in [0..height] by pixelSize
-    dy = Math.abs(height/2 - py)
-    d = (dx*dx + dy*dy)
-    diverge = isDiverging(x, toY(py))
-    if diverge
-      colorIdx = Math.floor(diverge * (colorScale.length-1)/limit)
-      ctx.fillStyle = colorScale[colorIdx]
-    else
-      ctx.fillStyle = "#111"
-    ctx.fillRect(px, py, pixelSize, pixelSize)
+window.draw = (limit) ->
+  for px in [0..width] by pixelSize
+    dx = Math.abs(width/2 - px)
+    x = toX(px)
+    for py in [0..height] by pixelSize
+      dy = Math.abs(height/2 - py)
+      d = (dx*dx + dy*dy)
+      diverge = isDiverging(x, toY(py), limit)
+      if diverge
+        colorIdx = Math.floor(diverge * (colorScale.length-1)/limit)
+        ctx.fillStyle = colorScale[colorIdx]
+      else
+        ctx.fillStyle = "#111"
+      ctx.fillRect(px, py, pixelSize, pixelSize)
+
+# draw(20)
+
+limit = 100
+nextDrawing = null
+progressiveDraw = (n = 10) ->
+  if n < limit
+    draw(n)
+    nextDrawing = setTimeout( ->
+      progressiveDraw(n+10)
+    , 500)
+  else
+    nextDrawing = null
+
+progressiveDraw()
+
+
+# return the absolute position of the element relative to the window
+# probably break if scrolling
+findPos = (el) ->
+  offsetTop = 0
+  offsetLeft = 0
+  node = el
+  while node.offsetParent
+    offsetTop += node.offsetTop
+    offsetLeft += node.offsetLeft
+    node = node.offsetParent
+  return {top: offsetTop, left: offsetLeft}
+
+selection = document.querySelector(".selection")
+offset = findPos(document.querySelector("#container"))
+console.log "offset: ", offset
+startX = 0
+startY = 0
+
+canvas.addEventListener("mousewheel", (ev) ->
+  ev.preventDefault()
+  cx = toX(ev.x-offset.left)
+  cy = toY(ev.y-offset.top)
+  if ev.wheelDeltaY > 0
+    zoomIn(cx, cy)
+  else
+    zoomOut(cx, cy)
+)
+
+zoomIn = (cx ,cy) ->
+  newW = (xmax-xmin) / 2
+  xmin = cx - newW/2
+  xmax = cx + newW/2
+
+  newH = newW/ratio
+  ymin = cy - newH/2
+  ymax = cy + newH/2
+  console.log "center of zoom: (#{cx}, #{cy})"
+  console.log "new ranges: [#{xmin}, #{xmax}] [#{ymin}, #{ymax}]"
+  if nextDrawing
+    clearTimeout(nextDrawing)
+  progressiveDraw()
+
+
+zoomOut = (cx, cy) ->
+  newW = (xmax-xmin) * 2
+  if newW >= 3 # recenter to the initial state
+    cx = -.5
+    cy = 0
+    newW = 3
+  xmin = cx - newW/2
+  xmax = cx + newW/2
+
+  newH = newW/ratio
+  ymin = cy - newH/2
+  ymax = cy + newH/2
+  if nextDrawing
+    clearTimeout(nextDrawing)
+  progressiveDraw()
+
 
 console.log "done after #{Date.now() - start} ms (at #{Date.now()})"
