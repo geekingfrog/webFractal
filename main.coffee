@@ -1,191 +1,116 @@
 # some variables
-width = 600
-height = 400
-ratio = width/height
-xmin = -2
-xmax = 1
-ymin = -1
-ymax = ymin + (xmax-xmin)/ratio
-# compute only the first term of the serie to check if it'll diverge
+# width = 600
+# height = 400
+# ratio = width/height
+# xmin = -2
+# xmax = 1
+# ymin = -1
+# ymax = ymin + (xmax-xmin)/ratio
+
+
+# some variables
+
+# fullscreen
+canvas = document.querySelector("canvas")
+canvas.width = window.innerWidth
+canvas.height = window.innerHeight
+
+# current logical coordinates
+xmax = xmin = ymax = ymin = 0
+
+xmax0 =  1
+xmin0 = -3
+ymin0 = -1
+ymax0 = ymin0 + (xmax0-xmin0)/(canvas.width/canvas.height)
+z = 0
 
 canvas = document.getElementById("fractal")
-canvas.width = width
-canvas.height = height
-window.ctx = canvas.getContext("2d")
+ctx = canvas.getContext("2d")
 
-ctx.fillStyle = "#ef0000"
-
-
-#fx^-1(x) and fy^-1(y) convert pixel to logical coordinates
-window.toX = (px) ->
-  px*(xmax-xmin)/width + xmin
-
-window.toY = (py) ->
-  (py*(ymax-ymin)/height + ymin)
-
-colorScale = ("rgb(#{step},#{step},#{step})" for step in [0...250] by 12)
-
-# compute the #{limit} first term of the mandlebrot serie.
-# return false if the given point will not diverge
-# otherwise, return the iteration at which the module was greater than 2
-# To speed up things, all computation is done with squared value (no square root)
-# z0 = 0
-# z_n+1 = z_n^2 + c
-isDiverging = (cx, cy, limit) ->
-  n = 1
-  zx = cx
-  zy = cy
-  while n<limit
-    # if zx*zx + zy*zy > (width/4)*width
-    if zx*zx + zy*zy > 4
-      return n
-    tmp = zx*zx - zy*zy
-    zy = 2*zx*zy + cy
-    zx = tmp + cx
-    n++
-  return false
+# create workers
+nbrWorker = 10
+idleWorkers = []
+jobQueue = []
+workingWorkers = {}
+for i in [0...nbrWorker]
+  worker = new Worker("fractalWorker.js")
+  idleWorkers.push worker
+  worker.addEventListener("message", (e) ->
+    ctx.putImageData(e.data.img, e.data.px0, e.data.py0)
+    idleWorkers.push this # put the worker back in the queue
+    delete workingWorkers[e.data.workerId]
+    processJobs()
+  )
 
 
-pixelSize = 1
-start = Date.now()
-console.log "starting at #{start}"
-window.draw = (limit) ->
-  for px in [0..width] by pixelSize
-    dx = Math.abs(width/2 - px)
-    x = toX(px)
-    for py in [0..height] by pixelSize
-      dy = Math.abs(height/2 - py)
-      d = (dx*dx + dy*dy)
-      diverge = isDiverging(x, toY(py), limit)
-      if diverge
-        colorIdx = Math.floor(diverge * (colorScale.length-1)/limit)
-        ctx.fillStyle = colorScale[colorIdx]
-      else
-        ctx.fillStyle = "#111"
-      ctx.fillRect(px, py, pixelSize, pixelSize)
-
-# draw(20)
-
-limit = 100
-nextDrawing = null
-progressiveDraw = (n = 10) ->
-  if n < limit
-    draw(n)
-    nextDrawing = setTimeout( ->
-      progressiveDraw(n+10)
-    , 500)
-  else
-    nextDrawing = null
-
-# progressiveDraw()
+# add a rendering job
+addJob = (data) ->
+  jobData = {
+    imgData: ctx.createImageData(data.width, data.height)
+    pxWidth: data.width
+    pxHeight: data.height
+    xmin: data.xmin
+    xmax: data.xmax
+    ymin: data.ymin
+    ymax: data.ymax
+    limit: data.limit
+    px0: data.px0
+    py0: data.py0
+  }
+  jobQueue.push jobData
 
 
-mandlebrot = (cx, cy, limit) ->
-  n = 1
-  zx = cx
-  zy = cy
-  while n<limit
-    if zx*zx + zy*zy > 4
-      return n
-    tmp = zx*zx - zy*zy
-    zy = 2*zx*zy + cy
-    zx = tmp + cx
-    n++
-  return false
+processJobs = ->
+  while jobQueue.length and idleWorkers.length
+    worker = idleWorkers.pop()
+    job = jobQueue.shift()
+    workerId = Date.now()
+    job.workerId = workerId
+    workingWorkers[workerId] = workerId
+    worker.postMessage(job)
 
-# ten green from darker to lighter
-greenPalette = do (n=10) ->
-  poly = (x) -> Math.floor(x*x*x - 85*x*x + 340*x)
-  palette = for i in [0...n]
-    [0, poly(i/n), 0]
-  return palette
 
-for color, i in greenPalette
-  n = greenPalette.length
-  ctx.fillStyle = "rgb(#{color[0]}, #{color[1]}, #{color[2]})"
-  ctx.fillRect(i*width/n, 0, width/n, height)
+# take a rectangle as an input and create
+# tiles from it to be rendered by different workers
+# no clipping handling for the moment, assume parameters are correct and
+# in range
+sliceRenderer = (px, py, width, height) ->
+  tileW = 200
+  tileH = 200
+  nbrXTiles = Math.ceil(width/tileW)
+  nbrYTiles = Math.ceil(height/tileH)
 
-# take an object as argument which contains the instruction to draw a fractal
-# and returns a UintClampedArray to draw on a canvas
-# data:
-#   xmin: logical xmin and xmax
-#   xmax
-#   ymin: logical ymin and ymax
-#   ymax
-#   pxWidth: number of pixel (width)
-#   pxHeight: number of pixel (height)
-#   palette: the color palette to use, palette[i] is an array of 3 int for rgb()
-computeFractal = (data) ->
-  {xmax, xmin, ymax, ymin, pxWidth, pxHeight, palette, limit} = data
-  # res = new Uint8ClampedArray(pxWidth*pxHeight*4)
-  res = ctx.createImageData(pxWidth, pxHeight)
+  stepX = (xmax-xmin)*tileW/width
+  stepY = (ymax-ymin)*tileH/height
 
-  # transform a pixel coordinate into a logical coordinate
-  # (0, 0) -> (xmin, ymin)
-  toX = (px) ->
-    px*(xmax-xmin)/pxWidth + xmin
-
-  toY = (py) ->
-    (py*(ymax-ymin)/pxHeight + ymin)
-
-  for py in [0...pxHeight]
-    cy = toY(py)
-    for px in [0...pxWidth]
-      cx = toX(px)
-      res.data[0+((py*pxWidth + px)<<2)] = Math.floor(Math.random()*255)
-      res.data[1+((py*pxWidth + px)<<2)] = Math.floor(Math.random()*255)
-      res.data[2+((py*pxWidth + px)<<2)] = Math.floor(Math.random()*255)
-      res.data[3+((py*pxWidth + px)<<2)] = 255
-
-      divIdx = mandlebrot(cx, cy, limit)
-      if divIdx
-        color = palette[Math.floor(divIdx*(palette.length-1)/limit)]
-        res.data[0+((py*pxWidth + px)<<2)] = color[0]
-        res.data[1+((py*pxWidth + px)<<2)] = color[1]
-        res.data[2+((py*pxWidth + px)<<2)] = color[2]
-        res.data[3+((py*pxWidth + px)<<2)] = 255
-      else
-        res.data[0+((py*pxWidth + px)<<2)] = 0
-        res.data[1+((py*pxWidth + px)<<2)] = 0
-        res.data[2+((py*pxWidth + px)<<2)] = 0
-        res.data[3+((py*pxWidth + px)<<2)] = 255
-
-  return res
-
-window.test = ->
-  # test to build the fractal in multiple times
-
-  canvas = document.querySelector("canvas")
-  canvas.width = window.innerWidth
-  canvas.height = window.innerHeight
-  width0 = canvas.width
-  height0 = canvas.height
-  xmax0 =  1
-  xmin0 = -3
-  ymin0 = -1
-  ymax0 = ymin0 + (xmax0-xmin0)/(width0/height0)
-
-  xSlices = 8
-  ySlices = 8
-  for i in [0...xSlices]
-    for j in [0...ySlices]
-      data = {
-        pxWidth: Math.round(width0/xSlices)
-        pxHeight: Math.round(height0/ySlices)
-        xmin: xmin0 + i/xSlices*(xmax0-xmin0)
-        xmax: xmin0 + (i+1)/xSlices*(xmax0-xmin0)
-        ymin: ymin0 + j/ySlices*(ymax0-ymin0)
-        ymax: ymin0 + (j+1)/ySlices*(ymax0-ymin0)
-        palette: greenPalette
+  i = 0
+  while i <= Math.ceil(width/tileW)
+    j = 0
+    while j <= Math.ceil(height/tileH)
+      addJob({
+        width: tileW
+        height: tileH
+        xmin: xmin + i*stepX
+        xmax: xmin + (i+1)*stepX
+        ymin: ymin + j*stepY
+        ymax: ymin + (j+1)*stepY
         limit: 500
-      }
-      ctx.putImageData(
-        computeFractal(data)
-        Math.round(i/xSlices*width0)
-        Math.round(j/ySlices*height0)
-      )
+        px0: i*tileW
+        py0: j*tileH
+      })
+      j++
+    i++
 
-start = Date.now()
-test()
-console.log "done in #{Date.now()-start} ms"
+  processJobs()
+
+
+zoom = (newZ) ->
+  xmax = xmax0<<newZ
+  xmin = xmin0<<newZ
+  ymax = ymax0<<newZ
+  ymin = ymin0<<newZ
+
+zoom(z)
+
+sliceRenderer(0, 0, canvas.width, canvas.height)
 
