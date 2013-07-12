@@ -1,28 +1,21 @@
 # some variables
-# width = 600
-# height = 400
-# ratio = width/height
-# xmin = -2
-# xmax = 1
-# ymin = -1
-# ymax = ymin + (xmax-xmin)/ratio
-
-
-# some variables
 
 # fullscreen
 canvas = document.querySelector("canvas")
 canvas.width = window.innerWidth
 canvas.height = window.innerHeight
 
-# current logical coordinates
-xmax = xmin = ymax = ymin = 0
 
 xmax0 =  1
 xmin0 = -3
 ymin0 = -1
 ymax0 = ymin0 + (xmax0-xmin0)/(canvas.width/canvas.height)
-z = 0
+
+# current logical coordinates
+xmax = xmax0
+xmin = xmin0
+ymin = ymin0
+ymax = ymax0
 
 canvas = document.getElementById("fractal")
 ctx = canvas.getContext("2d")
@@ -103,14 +96,6 @@ sliceRenderer = (px, py, width, height) ->
 
   processJobs()
 
-
-zoom = (newZ) ->
-  xmax = xmax0<<newZ
-  xmin = xmin0<<newZ
-  ymax = ymax0<<newZ
-  ymin = ymin0<<newZ
-
-zoom(z)
 
 sliceRenderer(0, 0, canvas.width, canvas.height)
 
