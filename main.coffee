@@ -63,37 +63,61 @@ processJobs = ->
 # in range
 sliceRenderer = (px, py, width, height, xmin, xmax, ymin, ymax) ->
   console.log "calling sliceRenderer with args: ", arguments
-  tileW = 200
-  tileH = 200
-  nbrXTiles = Math.ceil(width/tileW)
-  nbrYTiles = Math.ceil(height/tileH)
+  tileW = width
+  tileH = height
+  # tileW = 75
+  tileH = 75
+  nbrXTiles = width/tileW
+  nbrYTiles = height/tileH
 
-  stepX = (xmax-xmin)*tileW/width
-  stepY = (ymax-ymin)*tileH/height
+  xWidth = xmax - xmin
+  yHeight = ymax - ymin
+
+  stepX = xWidth*tileW/width
+  stepY = yHeight*tileH/height
 
   i = 0
-  while i <= Math.ceil(width/tileW)
+  while i < nbrXTiles
+    jobXmin = xmin + i*stepX
+    jobXmax = Math.min(jobXmin+stepX, xmax)
+    jobPx0 = px + i*tileW
+    if (i+1)*tileW > width
+      jobWidth = width - i*tileW
+    else
+      jobWidth = tileW
+
     j = 0
-    w = if (i+1)*tileW > width then width-i*tileW else tileW
-    while j <= Math.ceil(height/tileH)
-      h = if (j+1)*tileH > height then height-j*tileH else tileH
-      addJob({
-        width: tileW
-        height: tileH
-        xmin: xmin + i*stepX
-        xmax: xmin + (i+1)*stepX
-        ymin: ymin + j*stepY
-        ymax: ymin + (j+1)*stepY
+    while j < nbrYTiles
+      jobYmin = ymin + j*stepY
+      jobYmax = Math.min(jobYmin+stepY, ymax)
+      jobPy0 = py + j*tileH
+      if (j+1)*tileH > height
+        jobHeight = height - j*tileH
+      else
+        jobHeight = tileH
+
+      jobData = {
+        px0: jobPx0
+        width: jobWidth
+        py0: jobPy0
+        height: jobHeight
+        xmin: jobXmin
+        xmax: jobXmax
+        ymin: jobYmin
+        ymax: jobYmax
         limit: 500
-        px0: i*tileW
-        py0: j*tileH
-      })
+      }
+      addJob(jobData)
+      console.log "job data: ", jobData
+
       j++
+
     i++
 
-  for j in jobQueue
-    console.log j
   processJobs()
+
+  return
+
 
 isDragging = false
 startDragX = startDragY = null
@@ -165,5 +189,4 @@ window.test = ->
   ctx.putImageData(bck, -100,0)
 
 sliceRenderer(0, 0, canvas.width, canvas.height, xmin0, xmax0, ymin0, ymax0)
-# sliceRenderer(0, 0, canvas.width, 100, xmin0, xmax0, 0, 0.1)
-
+# sliceRenderer(0, 0, canvas.width, 100, xmin0, xmax0, 0, .5)
