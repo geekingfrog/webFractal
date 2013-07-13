@@ -7,7 +7,7 @@ canvas.height = window.innerHeight
 
 
 xmax0 =  1
-xmin0 = -3
+xmin0 = -1
 ymin0 = -1
 ymax0 = ymin0 + (xmax0-xmin0)/(canvas.width/canvas.height)
 
@@ -61,12 +61,12 @@ processJobs = ->
 # tiles from it to be rendered by different workers
 # no clipping handling for the moment, assume parameters are correct and
 # in range
-sliceRenderer = (px, py, width, height, xmin, xmax, ymin, ymax) ->
+window.sliceRenderer = (px, py, width, height, xmin, xmax, ymin, ymax) ->
   console.log "calling sliceRenderer with args: ", arguments
   tileW = width
   tileH = height
-  # tileW = 75
-  tileH = 75
+  # tileW = 10
+  # tileH = 100
   nbrXTiles = width/tileW
   nbrYTiles = height/tileH
 
@@ -124,7 +124,6 @@ startDragX = startDragY = null
 snapshot = null
 canvas.addEventListener("mousedown", (ev) ->
   isDragging = true
-  console.log "ev: ", ev
   startDragX = ev.x
   startDragY = ev.y
   snapshot = ctx.getImageData(0, 0, canvas.width, canvas.height)
@@ -138,48 +137,38 @@ window.addEventListener("mouseup", (ev) ->
   canvas.removeEventListener("mousemove", dragImage)
 )
 
-dragImage = _.throttle( (ev) ->
-    {x,y} = ev
-    dx = x - startDragX
-    dy = y - startDragY
-    console.log "(dx, dy) = (#{dx}, #{dy})"
+dragImage = (ev) ->
+  {x,y} = ev
+  dx = x - startDragX
+  dy = y - startDragY
 
-    # bck = ctx.getImageData(0, 0, canvas.width, canvas.height)
-    ctx.fillStyle = "#000"
-    ctx.fillRect(0, 0, canvas.width, canvas.height)
-    ctx.putImageData(snapshot, dx, dy)
-  , 50)
+  # bck = ctx.getImageData(0, 0, canvas.width, canvas.height)
+  ctx.fillStyle = "#000"
+  ctx.fillRect(0, 0, canvas.width, canvas.height)
+  ctx.putImageData(snapshot, dx, dy)
 
- 
 # redraw the fractal after a drag&drop
-fillGaps = (dx, dy) ->
-  console.log "filling gap for dx, dy: #{dx}, #{dy}"
-  if dx>0
-    startX = 0
-    w = dx
-    xmin = xmin0
-    xmax = xmin0 + dx*(xmax0-xmin0)/canvas.width
+fillGaps = (dpx, dpy) ->
+  console.log "filling gap for dx, dy: #{dpx}, #{dpy}"
+
+  dx = dpx * (xmax0 - xmin0)/canvas.width
+  xmin0 -= dx
+  xmax0 -= dx
+
+  dy = dpy * (ymax0 - ymin0)/canvas.height
+  ymin0 -= dy
+  ymax0 -= dy
+  console.log "(dx, dy) = (#{dx}, #{dy})"
+
+  if dx<0
+    sliceRenderer(canvas.width+dpx, 0, -dpx, canvas.height, xmax0+dx, xmax0, ymin0, ymax0)
   else
-    startX = canvas.width + dx
-    w = -dx
-    xmin = xmax0 + dx*(xmax0-xmin0)/canvas.width
-    xmax = xmax0
+    sliceRenderer(0, 0, dpx, canvas.height, xmin0, xmin0+dx, ymin0, ymax0)
 
-  if dy>0
-    startY = 0
-    h = dy
-    ymin = ymin0
-    ymax = ymin0 + dy*(ymax0-ymin0)/canvas.height
-  else
-    startY = canvas.height + dy
-    h = -dy
-    ymin = ymax0 + dy*(ymax0-ymin0)/canvas.height
-    ymax = ymax0
-
-  # three parts
-  # sliceRenderer(startX, startY, canvas.width, h, xmin, xmax, ymin, ymax)
-  sliceRenderer(0, startY, canvas.width, h, xmin0, xmax0, ymin, ymax)
-
+  if dpy<0
+    sliceRenderer(0, canvas.height+dpy, canvas.width, -dpy, xmin0, xmax0, ymax0+dy, ymax0)
+  else if dpy isnt 0
+    sliceRenderer(0, 0, canvas.width, dpy, xmin0, xmax0, ymin0, ymin0+dy)
 
 
 window.test = ->
@@ -189,4 +178,3 @@ window.test = ->
   ctx.putImageData(bck, -100,0)
 
 sliceRenderer(0, 0, canvas.width, canvas.height, xmin0, xmax0, ymin0, ymax0)
-# sliceRenderer(0, 0, canvas.width, 100, xmin0, xmax0, 0, .5)
