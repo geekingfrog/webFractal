@@ -59,7 +59,10 @@ processJobs = ->
 
 # limit if a function of the zoomfactor
 computeLimit = (zoom) ->
-  return 100 + zoom*50
+  if zoom > 0
+    return 100 + zoom*50
+  else
+    return 150
 
 # take a rectangle as an input and create
 # tiles from it to be rendered by different workers
@@ -195,13 +198,16 @@ zoomIn = (cpx, cpy) ->
   console.log "zooming with center: #{cpx}, #{cpy}"
   cx = xmin0 + cpx * (xmax0-xmin0)/canvas.width
   cy = ymin0 + cpy * (ymax0-ymin0)/canvas.height
-  newXwidth = (xmax0 - xmin0) /2
-  newYheight = (ymin0 - ymax0) /2
+  newXwidth = (xmax0 - xmin0) / 2
+  newYheight = (ymin0 - ymax0) / 2
 
-  xmin0 = cx - newXwidth/2
-  xmax0 = cx + newXwidth/2
-  ymin0 = cy + newYheight/2
-  ymax0 = cy - newYheight/2
+  xRatio = cpx/canvas.width
+  yRatio = cpy/canvas.height
+
+  xmin0 = cx - newXwidth*xRatio
+  xmax0 = cx + newXwidth*(1-xRatio)
+  ymin0 = cy + newYheight*yRatio
+  ymax0 = cy - newYheight*(1-yRatio)
   sliceRenderer(0, 0, canvas.width, canvas.height, xmin0, xmax0, ymin0, ymax0)
 
   return
@@ -257,17 +263,19 @@ zoomIn = (cpx, cpy) ->
 
 zoomOut = (cpx, cpy) ->
   zoomFactor--
-  cx = (xmax0 - xmin0)/2
-  cy = (ymax0 - ymin0)/2
+  cx = xmin0 + cpx * (xmax0 - xmin0)/canvas.width
+  cy = ymin0 + cpy * (ymax0 - ymin0)/canvas.height
   newXwidth = (xmax0 - xmin0) * 2
   newYheight = (ymax0 - ymin0) * 2
 
-  w = xmax0-xmin0
-  h = ymax0-ymin0
-  xmin0 -= w/2
-  xmax0 += w/2
-  ymin0 -= h/2
-  ymax0 += h/2
+  xRatio = cpx/canvas.width
+  yRatio = cpy/canvas.height
+
+  xmin0 = xmin0 - newXwidth/2*xRatio
+  xmax0 = xmax0 + newXwidth/2*(1-xRatio)
+  ymin0 = ymin0 - newYheight/2*yRatio
+  ymax0 = ymax0 + newYheight/2*(1-yRatio)
+
   sliceRenderer(0, 0, canvas.width, canvas.height, xmin0, xmax0, ymin0, ymax0)
 
 window.recompute = (l) ->
