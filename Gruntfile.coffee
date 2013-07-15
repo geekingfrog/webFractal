@@ -11,8 +11,13 @@ module.exports = (grunt) ->
         ext: '.js'
     } # end coffee
 
+    bower: {
+      install: {}
+    }
+
   )
 
   grunt.loadNpmTasks 'grunt-contrib-coffee'
+  grunt.loadNpmTasks 'grunt-bower-task'
 
   grunt.registerTask 'default', [ 'coffee:compile' ]

@@ -1,0 +1,8 @@
+{
+  "name": "web-fractals",
+  "version": "0.0.1",
+  "dependencies": {
+    "q": "0.9.6",
+    "lodash": "v1.3.1"
+  }
+}
