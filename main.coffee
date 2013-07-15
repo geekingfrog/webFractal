@@ -10,7 +10,7 @@ xmax0 =  1
 xmin0 = -3
 ymin0 = -1
 ymax0 = ymin0 + (xmax0-xmin0)/(canvas.width/canvas.height)
-zoomFactor = 1
+window.zoomFactor = 1
 
 canvas = document.getElementById("fractal")
 ctx = canvas.getContext("2d")
@@ -21,7 +21,7 @@ ctx.fillRect(0,0,canvas.width, canvas.height)
 cancelDate = 0
 
 # create workers
-nbrWorker = 10
+nbrWorker = 20
 idleWorkers = []
 jobQueue = []
 workingWorkers = {}
@@ -87,10 +87,9 @@ cancelJobs = ->
 
 # limit if a function of the zoomfactor
 computeLimit = (zoom) ->
-  if zoom > 0
-    return 100 + zoom*50
-  else
-    return 150
+  if zoom < 1
+    zoom = 1
+  return 100 + zoom*75
 
 # take a rectangle as an input and create
 # tiles from it to be rendered by different workers
@@ -160,14 +159,16 @@ startDragX = startDragY = null
 snapshot = null
 canvas.addEventListener("mousedown", (ev) ->
   isDragging = true
-  startDragX = ev.x
-  startDragY = ev.y
+  startDragX = ev.x or ev.clientX
+  startDragY = ev.y or ev.clientY
   snapshot = ctx.getImageData(0, 0, canvas.width, canvas.height)
   canvas.addEventListener("mousemove", dragImage)
 )
 
 window.addEventListener("mouseup", (ev) ->
-  fillGaps(ev.x - startDragX, ev.y - startDragY)
+  x = ev.x or ev.clientX
+  y = ev.y or ev.clientY
+  fillGaps(x - startDragX, y - startDragY)
   isDragging = false
   startDragX = startDragY = null
   canvas.removeEventListener("mousemove", dragImage)
@@ -175,7 +176,8 @@ window.addEventListener("mouseup", (ev) ->
 
 dragImage = (ev) ->
   cancelJobs()
-  {x,y} = ev
+  x = ev.x or ev.clientX
+  y = ev.y or ev.clientY
   dx = x - startDragX
   dy = y - startDragY
 
@@ -186,7 +188,7 @@ dragImage = (ev) ->
 
 # redraw the fractal after a drag&drop
 fillGaps = (dpx, dpy) ->
-
+  console.log "fillgaps ?"
   dx = dpx * (xmax0 - xmin0)/canvas.width
   xmin0 -= dx
   xmax0 -= dx
@@ -212,15 +214,27 @@ fillGaps = (dpx, dpy) ->
 ################################################################################ 
 # zooming part
 ################################################################################ 
-canvas.addEventListener("mousewheel", (ev) ->
+
+# firefox
+canvas.addEventListener("DOMMouseScroll", (ev) ->
+  if ev.detail < 0
+    zoomIn(ev.clientX, ev.clientY)
+  else
+    zoomOut(ev.clientX, ev.clientY)
+)
+
+# webkit (and ie ?)
+canvas.addEventListener("mousewheel", _.debounce( (ev) ->
+  console.log "ev: ", ev
   cancelJobs()
   if ev.wheelDeltaY > 0
     zoomIn(ev.x, ev.y)
   else
     zoomOut(ev.x, ev.y)
-)
+, 50))
 
 zoomIn = (cpx, cpy) ->
+  console.log "zoom in #{cpx},#{cpy} (#{typeof cpx})"
   zoomFactor++
   cx = xmin0 + cpx * (xmax0-xmin0)/canvas.width
   cy = ymin0 + cpy * (ymax0-ymin0)/canvas.height
