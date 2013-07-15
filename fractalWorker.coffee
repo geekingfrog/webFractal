@@ -1,3 +1,6 @@
+importScripts("lib/q/q.js")
+self.cancelTask = false
+
 mandlebrot = (cx, cy, limit) ->
   n = 1
   zx = cx
@@ -40,15 +43,9 @@ computeFractal = (data) ->
   toY = (py) ->
     (py*(ymax-ymin)/pxHeight + ymin)
 
-  for py in [0...pxHeight]
-    cy = toY(py)
+  computeRow = (py, cy) ->
     for px in [0...pxWidth]
       cx = toX(px)
-      imgData.data[0+((py*pxWidth + px)<<2)] = Math.floor(Math.random()*255)
-      imgData.data[1+((py*pxWidth + px)<<2)] = Math.floor(Math.random()*255)
-      imgData.data[2+((py*pxWidth + px)<<2)] = Math.floor(Math.random()*255)
-      imgData.data[3+((py*pxWidth + px)<<2)] = 255
-
       divIdx = mandlebrot(cx, cy, limit)
       if divIdx
         color = palette[Math.floor(divIdx*(palette.length-1)/limit)]
@@ -61,12 +58,35 @@ computeFractal = (data) ->
         imgData.data[1+((py*pxWidth + px)<<2)] = 0
         imgData.data[2+((py*pxWidth + px)<<2)] = 0
         imgData.data[3+((py*pxWidth + px)<<2)] = 255
+    return true
 
-  return imgData
 
+  computePromise = Q()
+  for py in [0...pxHeight]
+    do (py) ->
+      cy = toY(py)
+      computePromise = computePromise.then(->
+        if self.cancelTask
+          throw "cancelled"
+        else
+          return computeRow(py, cy)
+      )
+  return computePromise
 
 
 self.addEventListener('message', (e) ->
-  img = computeFractal(e.data)
-  self.postMessage({img: img, px0: e.data.px0, py0: e.data.py0, workerId: e.data.workerId})
+  if e.data.cmd is "cancel"
+    self.cancelTask = true
+  else
+    imgPromise = computeFractal(e.data)
+    imgPromise.done( ->
+      self.postMessage({
+        img: e.data.imgData
+        px0: e.data.px0
+        py0: e.data.py0
+        workerId: e.data.workerId
+      })
+    , (reason) -> #on rejection
+      # noop
+    )
 )

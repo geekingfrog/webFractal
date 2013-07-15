@@ -14,6 +14,8 @@ zoomFactor = 1
 
 canvas = document.getElementById("fractal")
 ctx = canvas.getContext("2d")
+ctx.fillStyle = "#000"
+ctx.fillRect(0,0,canvas.width, canvas.height)
 
 # create workers
 nbrWorker = 10
@@ -56,6 +58,10 @@ processJobs = ->
     job.workerId = workerId
     workingWorkers[workerId] = workerId
     worker.postMessage(job)
+
+cancelJobs = ->
+  for workerId, worker of workingWorkers
+    worker.postMessage({cmd: "cancel"})
 
 # limit if a function of the zoomfactor
 computeLimit = (zoom) ->
@@ -180,6 +186,7 @@ fillGaps = (dpx, dpy) ->
       sliceRenderer(0, canvas.height+dpy, canvas.width, -dpy, xmin0, xmax0, ymax0+dy, ymax0)
     else if dpy isnt 0
       sliceRenderer(0, 0, canvas.width, dpy, xmin0, xmax0, ymin0, ymin0+dy)
+
 
 
 ################################################################################ 
