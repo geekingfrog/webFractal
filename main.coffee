@@ -17,6 +17,9 @@ ctx = canvas.getContext("2d")
 ctx.fillStyle = "#000"
 ctx.fillRect(0,0,canvas.width, canvas.height)
 
+# all job started before this date are moot and their result will be discarded
+cancelDate = 0
+
 # create workers
 nbrWorker = 10
 idleWorkers = []
@@ -26,13 +29,16 @@ for i in [0...nbrWorker]
   worker = new Worker("fractalWorker.js")
   idleWorkers.push worker
   worker.addEventListener("message", (e) ->
-    ctx.putImageData(e.data.img, e.data.px0, e.data.py0)
-    idleWorkers.push this # put the worker back in the queue
-    delete workingWorkers[e.data.workerId]
+    if e.data.queueDate > cancelDate
+      ctx.putImageData(e.data.img, e.data.px0, e.data.py0)
+      idleWorkers.push this # put the worker back in the queue
+      delete workingWorkers[e.data.workerId]
     processJobs()
+    return
   )
 
 
+jobSorted = false
 # add a rendering job
 addJob = (data) ->
   jobData = {
@@ -46,22 +52,38 @@ addJob = (data) ->
     limit: data.limit
     px0: data.px0
     py0: data.py0
+    queueDate: Date.now()
   }
   jobQueue.push jobData
+  jobSorted = false
 
 
 processJobs = ->
+  unless jobSorted
+    distCenter = (x, y) ->
+      return Math.abs(x-canvas.width/2)*Math.abs(x-canvas.width/2)+Math.abs(y-canvas.height/2)*Math.abs(y-canvas.height/2)
+
+    jobQueue.sort (a, b) ->
+      da = distCenter(a.px0, a.py0)
+      db = distCenter(b.px0, b.py0)
+
+      return da - db
+    jobSorted = true
+
+
   while jobQueue.length and idleWorkers.length
     worker = idleWorkers.pop()
     job = jobQueue.shift()
-    workerId = Date.now()
-    job.workerId = workerId
-    workingWorkers[workerId] = workerId
+    workingWorkers[job.queueDate] = worker
     worker.postMessage(job)
 
 cancelJobs = ->
-  for workerId, worker of workingWorkers
-    worker.postMessage({cmd: "cancel"})
+  cancelDate = Date.now() - 1
+  jobQueue.length = 0
+  for start, worker of workingWorkers
+    idleWorkers.push worker
+  workingWorkers = {}
+  return
 
 # limit if a function of the zoomfactor
 computeLimit = (zoom) ->
@@ -121,7 +143,6 @@ window.sliceRenderer = (px, py, width, height, xmin, xmax, ymin, ymax, limit = c
         limit: limit
       }
       addJob(jobData)
-      # console.log "job data: ", jobData
 
       j++
 
@@ -153,6 +174,7 @@ window.addEventListener("mouseup", (ev) ->
 )
 
 dragImage = (ev) ->
+  cancelJobs()
   {x,y} = ev
   dx = x - startDragX
   dy = y - startDragY
@@ -164,7 +186,6 @@ dragImage = (ev) ->
 
 # redraw the fractal after a drag&drop
 fillGaps = (dpx, dpy) ->
-  console.log "filling gap for dx, dy: #{dpx}, #{dpy}"
 
   dx = dpx * (xmax0 - xmin0)/canvas.width
   xmin0 -= dx
@@ -173,7 +194,6 @@ fillGaps = (dpx, dpy) ->
   dy = dpy * (ymax0 - ymin0)/canvas.height
   ymin0 -= dy
   ymax0 -= dy
-  console.log "(dx, dy) = (#{dx}, #{dy})"
 
   if dx
     if dx<0
@@ -193,7 +213,7 @@ fillGaps = (dpx, dpy) ->
 # zooming part
 ################################################################################ 
 canvas.addEventListener("mousewheel", (ev) ->
-  console.log ev
+  cancelJobs()
   if ev.wheelDeltaY > 0
     zoomIn(ev.x, ev.y)
   else
@@ -202,7 +222,6 @@ canvas.addEventListener("mousewheel", (ev) ->
 
 zoomIn = (cpx, cpy) ->
   zoomFactor++
-  console.log "zooming with center: #{cpx}, #{cpy}"
   cx = xmin0 + cpx * (xmax0-xmin0)/canvas.width
   cy = ymin0 + cpy * (ymax0-ymin0)/canvas.height
   newXwidth = (xmax0 - xmin0) / 2
@@ -227,9 +246,6 @@ zoomIn = (cpx, cpy) ->
     Math.floor(cpx-canvas.width/2), Math.floor(cpy-canvas.height/2),
     zoomedWidth, zoomedHeight
   )
-  console.log "sliceToZoom: ", sliceToZoom
-  console.log "zoomed: ", zoomed
-  console.log "ratio: ", sliceToZoom.data.length/zoomed.data.length
 
   bck = ctx.getImageData(0,0, canvas.width, canvas.height)
   ox = cpx - Math.floor(canvas.width/2)

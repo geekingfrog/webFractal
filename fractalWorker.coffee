@@ -84,7 +84,7 @@ self.addEventListener('message', (e) ->
         img: e.data.imgData
         px0: e.data.px0
         py0: e.data.py0
-        workerId: e.data.workerId
+        queueDate: e.data.queueDate
       })
     , (reason) -> #on rejection
       # noop
