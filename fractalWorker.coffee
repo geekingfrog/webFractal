@@ -12,7 +12,7 @@ mandlebrot = (cx, cy, limit) ->
     zy = 2*zx*zy + cy
     zx = tmp + cx
     n++
-  return false
+  return n
 
 # ten green from darker to lighter
 greenPalette = do (n=10) ->
@@ -21,8 +21,10 @@ greenPalette = do (n=10) ->
     [0, poly(i/n), 0]
   return palette
 
+
 # take an object as argument which contains the instruction to draw a fractal
-# and returns a UintClampedArray to draw on a canvas
+# returns a promise which is resolved when the original array has been modified with
+# the newly computed values
 # data:
 #   xmin: logical xmin and xmax
 #   xmax

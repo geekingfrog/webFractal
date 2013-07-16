@@ -21,7 +21,7 @@ ctx.fillRect(0,0,canvas.width, canvas.height)
 cancelDate = 0
 
 # create workers
-nbrWorker = 20
+nbrWorker = 8
 idleWorkers = []
 jobQueue = []
 workingWorkers = {}
@@ -37,6 +37,8 @@ for i in [0...nbrWorker]
     return
   )
 
+warmPalette = window.palettes.generateWarmPalette(20)
+palette = window.palettes.generatePalette(50)
 
 jobSorted = false
 # add a rendering job
@@ -53,6 +55,7 @@ addJob = (data) ->
     px0: data.px0
     py0: data.py0
     queueDate: Date.now()
+    palette: palette
   }
   jobQueue.push jobData
   jobSorted = false
@@ -89,7 +92,7 @@ cancelJobs = ->
 computeLimit = (zoom) ->
   if zoom < 1
     zoom = 1
-  return 100 + zoom*75
+  return 100 + zoom*50
 
 # take a rectangle as an input and create
 # tiles from it to be rendered by different workers
@@ -97,10 +100,8 @@ computeLimit = (zoom) ->
 # in range
 window.sliceRenderer = (px, py, width, height, xmin, xmax, ymin, ymax, limit = computeLimit(zoomFactor)) ->
   console.log "calling sliceRenderer with args: ", arguments
-  tileW = width
-  tileH = height
-  tileW = 100
-  tileH = 100
+  tileW = 400
+  tileH = 400
   nbrXTiles = width/tileW
   nbrYTiles = height/tileH
 
@@ -234,8 +235,8 @@ canvas.addEventListener("mousewheel", _.debounce( (ev) ->
 , 50))
 
 zoomIn = (cpx, cpy) ->
-  console.log "zoom in #{cpx},#{cpy} (#{typeof cpx})"
   zoomFactor++
+  console.log "zoomFactor: #{zoomFactor}"
   cx = xmin0 + cpx * (xmax0-xmin0)/canvas.width
   cy = ymin0 + cpy * (ymax0-ymin0)/canvas.height
   newXwidth = (xmax0 - xmin0) / 2
@@ -320,3 +321,24 @@ window.recompute = (l) ->
   return zoomFactor
 
 sliceRenderer(0, 0, canvas.width, canvas.height, xmin0, xmax0, ymin0, ymax0)
+console.log "palette[0]: ", palette[0]
+
+window.drawHsl = ->
+  for i in [0...360]
+    rgb = palettes.hslToRgb(i, 1, .5)
+    ctx.fillStyle = palettes.rgb255ToCss(rgb)
+    ctx.fillRect(700+i*2, 0, 2, canvas.height)
+
+
+drawTonemap = ->
+  palette = window.palettes.generatePalette(50)
+  console.log "palette.length: ", palette.length
+  palette.forEach( (color, i) ->
+    ctx.fillStyle = palettes.rgb255ToCss(color)
+    ctx.fillRect(30 + i*10, 0, 10, canvas.height)
+  )
+
+  return
+
+drawTonemap()
+drawHsl()
