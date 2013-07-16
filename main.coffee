@@ -217,16 +217,17 @@ fillGaps = (dpx, dpy) ->
 ################################################################################ 
 
 # firefox
-canvas.addEventListener("DOMMouseScroll", (ev) ->
+canvas.addEventListener("DOMMouseScroll", _.debounce( (ev) ->
+  cancelJobs()
   if ev.detail < 0
     zoomIn(ev.clientX, ev.clientY)
   else
     zoomOut(ev.clientX, ev.clientY)
-)
+, 50))
+
 
 # webkit (and ie ?)
 canvas.addEventListener("mousewheel", _.debounce( (ev) ->
-  console.log "ev: ", ev
   cancelJobs()
   if ev.wheelDeltaY > 0
     zoomIn(ev.x, ev.y)
@@ -237,6 +238,10 @@ canvas.addEventListener("mousewheel", _.debounce( (ev) ->
 zoomIn = (cpx, cpy) ->
   zoomFactor++
   console.log "zoomFactor: #{zoomFactor}"
+
+
+
+  return
   cx = xmin0 + cpx * (xmax0-xmin0)/canvas.width
   cy = ymin0 + cpy * (ymax0-ymin0)/canvas.height
   newXwidth = (xmax0 - xmin0) / 2
@@ -252,55 +257,10 @@ zoomIn = (cpx, cpy) ->
   sliceRenderer(0, 0, canvas.width, canvas.height, xmin0, xmax0, ymin0, ymax0)
 
   return
-  # below an attempt to create a temporary zoomed image from the already rendered
-  # canvas
-  zoomed = ctx.createImageData(canvas.width, canvas.height)
-  zoomedWidth = Math.ceil(canvas.width/2)
-  zoomedHeight = Math.ceil(canvas.height/2)
-  sliceToZoom = ctx.getImageData(
-    Math.floor(cpx-canvas.width/2), Math.floor(cpy-canvas.height/2),
-    zoomedWidth, zoomedHeight
-  )
-
-  bck = ctx.getImageData(0,0, canvas.width, canvas.height)
-  ox = cpx - Math.floor(canvas.width/2)
-  oy = cpy - Math.floor(canvas.height/2)
-
-  j = 0
-  while j < canvas.height
-    i = 0
-    while i < canvas.width
-      startPx1 = (i*canvas.width + j)*4
-      target = 4*(canvas.width*(ox + Math.floor(i/2)) + oy + Math.floor(j/2))
-      zoomed.data[startPx1+0] = bck.data[target+0]
-      zoomed.data[startPx1+1] = bck.data[target+1]
-      zoomed.data[startPx1+2] = bck.data[target+2]
-      zoomed.data[startPx1+3] = bck.data[target+3]
-
-      startPx2 = startPx1 + 1
-      zoomed.data[startPx2+0] = bck.data[target+0]
-      zoomed.data[startPx2+1] = bck.data[target+1]
-      zoomed.data[startPx2+2] = bck.data[target+2]
-      zoomed.data[startPx2+3] = bck.data[target+3]
-
-      startPx3 = startPx1 + canvas.width
-      zoomed.data[startPx3+0] = bck.data[target+0]
-      zoomed.data[startPx3+1] = bck.data[target+1]
-      zoomed.data[startPx3+2] = bck.data[target+2]
-      zoomed.data[startPx3+3] = bck.data[target+3]
-
-      startPx4 = startPx3 + 1
-      zoomed.data[startPx4+0] = bck.data[target+0]
-      zoomed.data[startPx4+1] = bck.data[target+1]
-      zoomed.data[startPx4+2] = bck.data[target+2]
-      zoomed.data[startPx4+3] = bck.data[target+3]
-
-      i++
-    j++
-  ctx.putImageData(zoomed, 0, 0)
 
 zoomOut = (cpx, cpy) ->
   zoomFactor--
+  return
   cx = xmin0 + cpx * (xmax0 - xmin0)/canvas.width
   cy = ymin0 + cpy * (ymax0 - ymin0)/canvas.height
   newXwidth = (xmax0 - xmin0) * 2
