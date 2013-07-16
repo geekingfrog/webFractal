@@ -237,11 +237,19 @@ canvas.addEventListener("mousewheel", _.debounce( (ev) ->
 
 zoomIn = (cpx, cpy) ->
   zoomFactor++
-  console.log "zoomFactor: #{zoomFactor}"
 
+  # the part of the image to be zoomed is a rectangle (px0Zoomed, py0Zoomed, wZoomed, hZoomed)
+  # after the zoom is complete, this rectangle will take all the space
+  wZoomed = Math.floor(canvas.width/2)
+  hZoomed = Math.floor(canvas.height/2)
+  px0Zoomed = Math.floor(cpx - wZoomed*cpx/canvas.width)
+  py0Zoomed = Math.floor(cpy - hZoomed*cpy/canvas.height)
+  zoomed = ctx.getImageData(px0Zoomed, py0Zoomed, wZoomed, hZoomed)
+  zoomedData = [].slice.call(zoomed.data)
 
+  pixels = ctx.getImageData(0, 0, canvas.width, canvas.height)
+  pixelsData = pixels.data
 
-  return
   cx = xmin0 + cpx * (xmax0-xmin0)/canvas.width
   cy = ymin0 + cpy * (ymax0-ymin0)/canvas.height
   newXwidth = (xmax0 - xmin0) / 2
@@ -256,11 +264,56 @@ zoomIn = (cpx, cpy) ->
   ymax0 = cy - newYheight*(1-yRatio)
   sliceRenderer(0, 0, canvas.width, canvas.height, xmin0, xmax0, ymin0, ymax0)
 
+
+  # from here, compute a preview of the zoom image by stretching the zoomed part to fill
+  # the current canvas
+  j = 0
+  while j < hZoomed
+    i = 0
+    while i < wZoomed
+      posZoomed = (j*wZoomed+i)*4
+      r = zoomedData[posZoomed]
+      g = zoomedData[posZoomed+1]
+      b = zoomedData[posZoomed+2]
+      a = zoomedData[posZoomed+3]
+
+      pos1 = (j*canvas.width+i)*4*2
+      pos2 = pos1 + 4
+      pos3 = pos1 + canvas.width*4
+      pos4 = pos3 + 4
+
+      pixelsData[pos1+0] = r
+      pixelsData[pos1+1] = g
+      pixelsData[pos1+2] = b
+      pixelsData[pos1+4] = a
+
+      pixelsData[pos2+0] = r
+      pixelsData[pos2+1] = g
+      pixelsData[pos2+2] = b
+      pixelsData[pos2+4] = a
+
+      pixelsData[pos3+0] = r
+      pixelsData[pos3+1] = g
+      pixelsData[pos3+2] = b
+      pixelsData[pos3+4] = a
+
+      pixelsData[pos4+0] = r
+      pixelsData[pos4+1] = g
+      pixelsData[pos4+2] = b
+      pixelsData[pos4+4] = a
+
+      i++
+    j++
+
+  pixels.data = pixelsData
+  ctx.putImageData(pixels, 0, 0)
+
+
+
   return
 
 zoomOut = (cpx, cpy) ->
   zoomFactor--
-  return
   cx = xmin0 + cpx * (xmax0 - xmin0)/canvas.width
   cy = ymin0 + cpy * (ymax0 - ymin0)/canvas.height
   newXwidth = (xmax0 - xmin0) * 2
