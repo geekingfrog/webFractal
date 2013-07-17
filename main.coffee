@@ -2,8 +2,8 @@
 
 # fullscreen
 canvas = document.querySelector("canvas")
-canvas.width = window.innerWidth
-canvas.height = window.innerHeight
+canvas.width = window.innerWidth - window.innerWidth%2
+canvas.height = window.innerHeight - window.innerHeight%2
 
 
 xmax0 =  1
@@ -158,25 +158,29 @@ window.sliceRenderer = (px, py, width, height, xmin, xmax, ymin, ymax, limit = c
 isDragging = false
 startDragX = startDragY = null
 snapshot = null
-canvas.addEventListener("mousedown", (ev) ->
+
+startDrag = (ev) ->
+  console.log "start dragging"
   isDragging = true
   startDragX = ev.x or ev.clientX
   startDragY = ev.y or ev.clientY
   snapshot = ctx.getImageData(0, 0, canvas.width, canvas.height)
   canvas.addEventListener("mousemove", dragImage)
-)
 
-window.addEventListener("mouseup", (ev) ->
+stopDrag = (ev) ->
   x = ev.x or ev.clientX
   y = ev.y or ev.clientY
   fillGaps(x - startDragX, y - startDragY)
   isDragging = false
   startDragX = startDragY = null
   canvas.removeEventListener("mousemove", dragImage)
-)
+
+canvas.addEventListener("mousedown", startDrag)
+window.addEventListener("mouseup", stopDrag)
+
 
 dragImage = (ev) ->
-  cancelJobs()
+  # cancelJobs()
   x = ev.x or ev.clientX
   y = ev.y or ev.clientY
   dx = x - startDragX
@@ -187,7 +191,12 @@ dragImage = (ev) ->
   ctx.fillRect(0, 0, canvas.width, canvas.height)
   ctx.putImageData(snapshot, dx, dy)
 
+  if dx*dx + dy*dy > 100
+    console.log "travelled more than 100 px from the start"
+
+
 # redraw the fractal after a drag&drop
+# the argument are the coordinate (pixels) of the new center of the image
 fillGaps = (dpx, dpy) ->
   dx = dpx * (xmax0 - xmin0)/canvas.width
   xmin0 -= dx
@@ -197,13 +206,14 @@ fillGaps = (dpx, dpy) ->
   ymin0 -= dy
   ymax0 -= dy
 
-  if dx
+  console.log "dpx, dpy: #{dpx}, #{dpy}"
+  if Math.abs(dpx) > 5
     if dx<0
       sliceRenderer(canvas.width+dpx, 0, -dpx, canvas.height, xmax0+dx, xmax0, ymin0, ymax0)
     else
       sliceRenderer(0, 0, dpx, canvas.height, xmin0, xmin0+dx, ymin0, ymax0)
 
-  if dy
+  if Math.abs(dpy) > 5
     if dpy<0
       sliceRenderer(0, canvas.height+dpy, canvas.width, -dpy, xmin0, xmax0, ymax0+dy, ymax0)
     else if dpy isnt 0
@@ -234,9 +244,9 @@ canvas.addEventListener("mousewheel", _.debounce( (ev) ->
     zoomOut(ev.x, ev.y)
 , 50))
 
+# @args cpx, cpy: position (pixel) of the cursor.
 zoomIn = (cpx, cpy) ->
   zoomFactor++
-
 
   pixels = ctx.getImageData(0, 0, canvas.width, canvas.height)
   pixelsData = pixels.data
@@ -305,9 +315,6 @@ zoomIn = (cpx, cpy) ->
 
   pixels.data = pixelsData
   ctx.putImageData(pixels, 0, 0)
-
-
-
   return
 
 zoomOut = (cpx, cpy) ->
@@ -356,29 +363,18 @@ zoomOut = (cpx, cpy) ->
   return
 
 window.recompute = (l) ->
+  cancelJobs()
   sliceRenderer(0,0,canvas.width,canvas.height,xmin0,xmax0,ymin0,ymax0, l)
   return zoomFactor
 
 sliceRenderer(0, 0, canvas.width, canvas.height, xmin0, xmax0, ymin0, ymax0)
-console.log "palette[0]: ", palette[0]
 
-# some test code to try out some palette and color scheme
-# window.drawHsl = ->
-#   for i in [0...360]
-#     rgb = palettes.hslToRgb(i, 1, .5)
-#     ctx.fillStyle = palettes.rgb255ToCss(rgb)
-#     ctx.fillRect(700+i*2, 0, 2, canvas.height)
-# 
-# 
-# drawTonemap = ->
-#   palette = window.palettes.generatePalette(50)
-#   console.log "palette.length: ", palette.length
-#   palette.forEach( (color, i) ->
-#     ctx.fillStyle = palettes.rgb255ToCss(color)
-#     ctx.fillRect(30 + i*10, 0, 10, canvas.height)
-#   )
-# 
-#   return
-# 
-# drawTonemap()
-# drawHsl()
+# manage controls
+document.querySelector("#zoomIn").addEventListener("click", (ev) ->
+  console.log "clicked on zoomIn ", ev
+  zoomIn(Math.floor(canvas.width/2), Math.floor(canvas.height/2))
+)
+
+document.querySelector("#zoomOut").addEventListener("click", (ev) ->
+  zoomOut(Math.floor(canvas.width/2), Math.floor(canvas.height/2))
+)

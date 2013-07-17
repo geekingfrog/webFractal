@@ -5,17 +5,21 @@
     <meta name="viewport" content="initial-scale=1.0, user-scalable=no" />
     <meta http-equiv="content-type" content="text/html; charset=utf-8">
 
-    <title>test webworkers</title>
+    <title>Fractals with canvas.</title>
+    <link rel="stylesheet" href="fontawesomeSubset/style.css" type="text/css" />
     <style type="text/css" media="">
       * {
         box-sizing: border-box;
         cursor: default;
+        padding: 0;
+        margin: 0;
       }
 
       body {
         margin: 0;
         padding: 0;
         overflow: hidden;
+        background-color: black;
       }
 
       canvas {
@@ -24,11 +28,20 @@
       }
 
     </style>
+    <link rel="stylesheet" href="control.css" type="text/css" />
   </head>
   <body>
 
 
-    <canvas id="fractal"> </canvas>
+    <div id="container">
+      <canvas id="fractal"> </canvas>
+      <div class="control-container">
+        <div class="control control-zoom">
+          <span id="zoomIn"> <i class="icon-zoom-in"></i></span>
+          <span id="zoomOut"> <i class="icon-zoom-out"></i></span>
+        </div>
+      </div>
+    </div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
