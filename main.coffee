@@ -21,7 +21,7 @@ ctx.fillRect(0,0,canvas.width, canvas.height)
 cancelDate = 0
 
 # create workers
-nbrWorker = 8
+nbrWorker = 5
 idleWorkers = []
 jobQueue = []
 workingWorkers = {}
@@ -100,8 +100,8 @@ computeLimit = (zoom) ->
 # in range
 window.sliceRenderer = (px, py, width, height, xmin, xmax, ymin, ymax, limit = computeLimit(zoomFactor)) ->
   console.log "calling sliceRenderer with args: ", arguments
-  tileW = 400
-  tileH = 400
+  tileW = 200
+  tileH = 200
   nbrXTiles = width/tileW
   nbrYTiles = height/tileH
 
@@ -189,7 +189,6 @@ dragImage = (ev) ->
 
 # redraw the fractal after a drag&drop
 fillGaps = (dpx, dpy) ->
-  console.log "fillgaps ?"
   dx = dpx * (xmax0 - xmin0)/canvas.width
   xmin0 -= dx
   xmax0 -= dx
@@ -238,14 +237,6 @@ canvas.addEventListener("mousewheel", _.debounce( (ev) ->
 zoomIn = (cpx, cpy) ->
   zoomFactor++
 
-  # the part of the image to be zoomed is a rectangle (px0Zoomed, py0Zoomed, wZoomed, hZoomed)
-  # after the zoom is complete, this rectangle will take all the space
-  wZoomed = Math.floor(canvas.width/2)
-  hZoomed = Math.floor(canvas.height/2)
-  px0Zoomed = Math.floor(cpx - wZoomed*cpx/canvas.width)
-  py0Zoomed = Math.floor(cpy - hZoomed*cpy/canvas.height)
-  zoomed = ctx.getImageData(px0Zoomed, py0Zoomed, wZoomed, hZoomed)
-  zoomedData = [].slice.call(zoomed.data)
 
   pixels = ctx.getImageData(0, 0, canvas.width, canvas.height)
   pixelsData = pixels.data
@@ -267,6 +258,13 @@ zoomIn = (cpx, cpy) ->
 
   # from here, compute a preview of the zoom image by stretching the zoomed part to fill
   # the current canvas
+  # the part of the image to be zoomed is a rectangle (px0Zoomed, py0Zoomed, wZoomed, hZoomed)
+  wZoomed = Math.floor(canvas.width/2)
+  hZoomed = Math.floor(canvas.height/2)
+  px0Zoomed = Math.floor(cpx - wZoomed*cpx/canvas.width)
+  py0Zoomed = Math.floor(cpy - hZoomed*cpy/canvas.height)
+  zoomed = ctx.getImageData(px0Zoomed, py0Zoomed, wZoomed, hZoomed)
+  zoomedData = [].slice.call(zoomed.data)
   j = 0
   while j < hZoomed
     i = 0
@@ -329,6 +327,34 @@ zoomOut = (cpx, cpy) ->
 
   sliceRenderer(0, 0, canvas.width, canvas.height, xmin0, xmax0, ymin0, ymax0)
 
+  # from here, compute a preview of the zoomed out image by shrinking the current image
+  pixels = ctx.getImageData(0, 0, canvas.width, canvas.height)
+  pixelsData = pixels.data
+
+  px0Shrunk = Math.floor(cpx/2)
+  py0Shrunk = Math.floor(cpy/2)
+  wShrunk = Math.floor(canvas.width/2)
+  hShrunk = Math.floor(canvas.height/2)
+  shrunk = ctx.createImageData(wShrunk, hShrunk)
+
+  j = 0
+  while j < hShrunk
+    i = 0
+    while i < wShrunk
+      pos = (j*wShrunk+i)*4
+      pixelPos = (j*canvas.width+i)*4*2
+      shrunk.data[pos+0] = pixelsData[pixelPos+0]
+      shrunk.data[pos+1] = pixelsData[pixelPos+1]
+      shrunk.data[pos+2] = pixelsData[pixelPos+2]
+      shrunk.data[pos+3] = pixelsData[pixelPos+3]
+      i++
+    j++
+
+  ctx.fillStyle = "#000"
+  ctx.fillRect(0,0,canvas.width,canvas.height)
+  ctx.putImageData(shrunk, px0Shrunk, py0Shrunk)
+  return
+
 window.recompute = (l) ->
   sliceRenderer(0,0,canvas.width,canvas.height,xmin0,xmax0,ymin0,ymax0, l)
   return zoomFactor
@@ -336,22 +362,23 @@ window.recompute = (l) ->
 sliceRenderer(0, 0, canvas.width, canvas.height, xmin0, xmax0, ymin0, ymax0)
 console.log "palette[0]: ", palette[0]
 
-window.drawHsl = ->
-  for i in [0...360]
-    rgb = palettes.hslToRgb(i, 1, .5)
-    ctx.fillStyle = palettes.rgb255ToCss(rgb)
-    ctx.fillRect(700+i*2, 0, 2, canvas.height)
-
-
-drawTonemap = ->
-  palette = window.palettes.generatePalette(50)
-  console.log "palette.length: ", palette.length
-  palette.forEach( (color, i) ->
-    ctx.fillStyle = palettes.rgb255ToCss(color)
-    ctx.fillRect(30 + i*10, 0, 10, canvas.height)
-  )
-
-  return
-
-drawTonemap()
-drawHsl()
+# some test code to try out some palette and color scheme
+# window.drawHsl = ->
+#   for i in [0...360]
+#     rgb = palettes.hslToRgb(i, 1, .5)
+#     ctx.fillStyle = palettes.rgb255ToCss(rgb)
+#     ctx.fillRect(700+i*2, 0, 2, canvas.height)
+# 
+# 
+# drawTonemap = ->
+#   palette = window.palettes.generatePalette(50)
+#   console.log "palette.length: ", palette.length
+#   palette.forEach( (color, i) ->
+#     ctx.fillStyle = palettes.rgb255ToCss(color)
+#     ctx.fillRect(30 + i*10, 0, 10, canvas.height)
+#   )
+# 
+#   return
+# 
+# drawTonemap()
+# drawHsl()
