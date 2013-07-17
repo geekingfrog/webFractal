@@ -27,7 +27,7 @@ Instead of a list of all class selectors,
 you can use the generic selector below, but it's slower:
 [class*="icon-"] {
 */
-.icon-zoom-in, .icon-zoom-out, .icon-refresh {
+.icon-zoom-in, .icon-zoom-out, .icon-refresh, .icon-cog, .icon-eye-open {
 	font-family: 'fontawesome';
 	speak: none;
 	font-style: normal;
@@ -45,4 +45,10 @@ you can use the generic selector below, but it's slower:
 }
 .icon-refresh:before {
 	content: "\f021";
+}
+.icon-cog:before {
+	content: "\f013";
+}
+.icon-eye-open:before {
+	content: "\f06e";
 }

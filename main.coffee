@@ -5,12 +5,11 @@ canvas = document.querySelector("canvas")
 canvas.width = window.innerWidth - window.innerWidth%2
 canvas.height = window.innerHeight - window.innerHeight%2
 
-
 xmax0 =  1
 xmin0 = -3
 ymin0 = -1
 ymax0 = ymin0 + (xmax0-xmin0)/(canvas.width/canvas.height)
-window.zoomFactor = 1
+zoomFactor = 1
 
 canvas = document.getElementById("fractal")
 ctx = canvas.getContext("2d")
@@ -19,6 +18,9 @@ ctx.fillRect(0,0,canvas.width, canvas.height)
 
 # all job started before this date are moot and their result will be discarded
 cancelDate = 0
+
+# small icon in the control panel to show that the image is being render
+cog = document.querySelector(".icon-cog")
 
 # create workers
 nbrWorker = 5
@@ -59,6 +61,10 @@ addJob = (data) ->
   }
   jobQueue.push jobData
   jobSorted = false
+  if cog.classList.contains("icon-eye-open")
+    cog.classList.remove("icon-eye-open")
+    cog.classList.add("icon-cog", "icon-spin")
+  return
 
 
 processJobs = ->
@@ -80,6 +86,11 @@ processJobs = ->
     workingWorkers[job.queueDate] = worker
     worker.postMessage(job)
 
+  if jobQueue.length is 0
+    renderCompleted = new Event "renderCompleted"
+    window.dispatchEvent(renderCompleted)
+  return
+
 cancelJobs = ->
   cancelDate = Date.now() - 1
   jobQueue.length = 0
@@ -94,12 +105,15 @@ computeLimit = (zoom) ->
     zoom = 1
   return 100 + zoom*50
 
+res = computeLimit(zoomFactor)
+
 # take a rectangle as an input and create
 # tiles from it to be rendered by different workers
 # no clipping handling for the moment, assume parameters are correct and
 # in range
 window.sliceRenderer = (px, py, width, height, xmin, xmax, ymin, ymax, limit = computeLimit(zoomFactor)) ->
   console.log "calling sliceRenderer with args: ", arguments
+  res = limit
   tileW = 200
   tileH = 200
   nbrXTiles = width/tileW
@@ -151,7 +165,7 @@ window.sliceRenderer = (px, py, width, height, xmin, xmax, ymin, ymax, limit = c
   processJobs()
 
   # change the hash
-  location.hash = "xmin=#{xmin0}&width=#{xmax0-xmin0}&ymin=#{ymin0}&height=#{ymax0-ymin0}&zoom=#{zoomFactor}"
+  location.hash = "xmin=#{xmin0}&width=#{xmax0-xmin0}&ymin=#{ymin0}&zoom=#{zoomFactor}"
   return
 
 ################################################################################ 
@@ -162,7 +176,6 @@ startDragX = startDragY = null
 snapshot = null
 
 startDrag = (ev) ->
-  console.log "start dragging"
   isDragging = true
   startDragX = ev.x or ev.clientX
   startDragY = ev.y or ev.clientY
@@ -209,7 +222,6 @@ fillGaps = (dpx, dpy) ->
   ymin0 -= dy
   ymax0 -= dy
 
-  console.log "dpx, dpy: #{dpx}, #{dpy}"
   if Math.abs(dpx) > 5
     if dx<0
       sliceRenderer(canvas.width+dpx, 0, -dpx, canvas.height, xmax0+dx, xmax0, ymin0, ymax0)
@@ -386,16 +398,16 @@ initDrawing = ->
     for key, val of params
       params[key] = parseFloat(val, 10)
     console.log "draw with params: ", params
-    if params.xmin and params.width and params.ymin and params.height and params.zoom
+    if params.xmin and params.width and params.ymin and params.zoom
       xmin0 = params.xmin
       xmax0 = xmin0 + params.width
       ymin0 = params.ymin
-      ymax0 = ymin0 + params.height
+      ymax0 = ymin0 + (xmax0-xmin0)*canvas.height/canvas.width
+      console.log "zoomFactor from url: ", params.zoom, parseInt(params.zoom, 10)
       zoomFactor = parseInt(params.zoom, 10)
 
 
   sliceRenderer(0, 0, canvas.width, canvas.height, xmin0, xmax0, ymin0, ymax0)
-
 
 # manage controls
 document.querySelector(".control-container").addEventListener("mousedown", (ev) ->
@@ -429,3 +441,13 @@ document.querySelector("#reset").addEventListener("click", (ev) ->
   return
 )
 
+document.querySelector("#increaseRes").addEventListener("click", (ev) ->
+  cancelJobs()
+  res*=1.2
+  sliceRenderer(0,0,canvas.width,canvas.height,xmin0,xmax0,ymin0,ymax0, res)
+)
+
+window.addEventListener("renderCompleted", (ev) ->
+  cog.classList.remove("icon-spin", "icon-cog")
+  cog.classList.add("icon-eye-open")
+)

@@ -24,6 +24,7 @@
   text-align: center;
   padding: 2px 5px;
   background-color: #ddd;
+  border-top: 1px solid #888;
   /* box-shadow: 0 1px 3px rgba(255, 0, 0, .9) */
 }
 
@@ -32,7 +33,7 @@
   border-top-right-radius: 3px;
   -moz-border-top-left-radius: 3px;
   -moz-border-top-right-radius: 3px;
-  border-bottom: 1px solid #888;
+  border-top: none;
 }
 
 .control a:last-child {
@@ -47,3 +48,45 @@
   background-color: #efefef;
   cursor: pointer;
 }
+
+
+
+
+/* Animated rotating icon */
+.icon-spin {
+  display: inline-block;
+  -moz-animation: spin 2s infinite linear;
+  -o-animation: spin 2s infinite linear;
+  -webkit-animation: spin 2s infinite linear;
+  animation: spin 2s infinite linear;
+}
+
+/* Prevent stack and spinners from being taken inline when inside a link */
+a .icon-stack,
+a .icon-spin {
+  display: inline-block;
+  text-decoration: none;
+}
+
+@-moz-keyframes spin {
+  0% { -moz-transform: rotate(0deg); }
+  100% { -moz-transform: rotate(359deg); }
+}
+@-webkit-keyframes spin {
+  0% { -webkit-transform: rotate(0deg); }
+  100% { -webkit-transform: rotate(359deg); }
+}
+@-o-keyframes spin {
+  0% { -o-transform: rotate(0deg); }
+  100% { -o-transform: rotate(359deg); }
+}
+@-ms-keyframes spin {
+  0% { -ms-transform: rotate(0deg); }
+  100% { -ms-transform: rotate(359deg); }
+}
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(359deg); }
+}
+
+
