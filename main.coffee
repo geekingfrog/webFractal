@@ -150,6 +150,8 @@ window.sliceRenderer = (px, py, width, height, xmin, xmax, ymin, ymax, limit = c
 
   processJobs()
 
+  # change the hash
+  location.hash = "xmin=#{xmin0}&width=#{xmax0-xmin0}&ymin=#{ymin0}&height=#{ymax0-ymin0}&zoom=#{zoomFactor}"
   return
 
 ################################################################################ 
@@ -168,6 +170,7 @@ startDrag = (ev) ->
   canvas.addEventListener("mousemove", dragImage)
 
 stopDrag = (ev) ->
+  return unless isDragging
   x = ev.x or ev.clientX
   y = ev.y or ev.clientY
   fillGaps(x - startDragX, y - startDragY)
@@ -367,14 +370,62 @@ window.recompute = (l) ->
   sliceRenderer(0,0,canvas.width,canvas.height,xmin0,xmax0,ymin0,ymax0, l)
   return zoomFactor
 
-sliceRenderer(0, 0, canvas.width, canvas.height, xmin0, xmax0, ymin0, ymax0)
+if document.readyState is "complete"
+  initDrawing()
+else
+  document.addEventListener("DOMContentLoaded", ->
+    document.removeEventListener("DOMContentLoaded", arguments.callee, false)
+    initDrawing()
+  )
+
+initDrawing = ->
+  if location.hash
+    params = {}
+    for keyVal in location.hash.slice(1).split("&")
+      params[keyVal.split("=")[0]] = keyVal.split("=")[1]
+    for key, val of params
+      params[key] = parseFloat(val, 10)
+    console.log "draw with params: ", params
+    if params.xmin and params.width and params.ymin and params.height and params.zoom
+      xmin0 = params.xmin
+      xmax0 = xmin0 + params.width
+      ymin0 = params.ymin
+      ymax0 = ymin0 + params.height
+      zoomFactor = parseInt(params.zoom, 10)
+
+
+  sliceRenderer(0, 0, canvas.width, canvas.height, xmin0, xmax0, ymin0, ymax0)
+
 
 # manage controls
+document.querySelector(".control-container").addEventListener("mousedown", (ev) ->
+  ev.stopPropagation(); return false
+)
+document.querySelector(".control-container").addEventListener("mouseup", (ev) ->
+  ev.stopPropagation(); return false
+)
+
 document.querySelector("#zoomIn").addEventListener("click", (ev) ->
-  console.log "clicked on zoomIn ", ev
   zoomIn(Math.floor(canvas.width/2), Math.floor(canvas.height/2))
+  ev.stopPropagation()
+  return
 )
 
 document.querySelector("#zoomOut").addEventListener("click", (ev) ->
   zoomOut(Math.floor(canvas.width/2), Math.floor(canvas.height/2))
+  ev.stopPropagation()
+  return
 )
+
+document.querySelector("#reset").addEventListener("click", (ev) ->
+  xmax0 =  1
+  xmin0 = -3
+  ymin0 = -1
+  ymax0 = ymin0 + (xmax0-xmin0)/(canvas.width/canvas.height)
+  zoomFactor = 1
+  cancelJobs()
+  sliceRenderer(0, 0, canvas.width, canvas.height, xmin0, xmax0, ymin0, ymax0)
+  ev.stopPropagation()
+  return
+)
+

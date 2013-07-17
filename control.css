@@ -7,9 +7,19 @@
   top: 0px;
   left: 0px;
   margin: 10px;
+  z-index: 2;
 }
 
-.control-zoom span {
+.control {
+  margin: 10px 0;
+}
+
+.control a {
+  text-decoration: none;
+  color: black;
+}
+
+.control a {
   display: block;
   text-align: center;
   padding: 2px 5px;
@@ -17,7 +27,7 @@
   /* box-shadow: 0 1px 3px rgba(255, 0, 0, .9) */
 }
 
-.control-zoom span:first-child {
+.control a:first-child {
   border-top-left-radius: 3px;
   border-top-right-radius: 3px;
   -moz-border-top-left-radius: 3px;
@@ -25,7 +35,7 @@
   border-bottom: 1px solid #888;
 }
 
-.control-zoom span:last-child {
+.control a:last-child {
   border-bottom-left-radius: 3px;
   border-bottom-right-radius: 3px;
   -moz-border-bottom-left-radius: 3px;
@@ -33,14 +43,7 @@
 }
 
 
-/* .control-zoom span:last-child { */
-/*   border-radius: 10px; */
-/*   background-color: #aaa; */
-/* } */
-
-.control-zoom *:hover {
+.control *:hover {
   background-color: #efefef;
   cursor: pointer;
-  /* -moz-border-radius: 3px; */
-  /* border-radius: 3px; */
 }
