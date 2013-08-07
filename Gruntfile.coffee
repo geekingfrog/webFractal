@@ -20,4 +20,5 @@ module.exports = (grunt) ->
   grunt.loadNpmTasks 'grunt-contrib-coffee'
   grunt.loadNpmTasks 'grunt-bower-task'
 
-  grunt.registerTask 'default', [ 'coffee:compile' ]
+  grunt.registerTask 'default', [ 'coffee' ]
+  grunt.registerTask 'install', [ 'bower', 'coffee' ]
